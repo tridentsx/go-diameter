@@ -28,7 +28,11 @@ func handleCER(sm *StateMachine) diam.HandlerFunc {
 			return
 		}
 		cer := new(smparser.CER)
-		_, err := cer.ParseWithSecurity(m, smparser.Server, c.TLS() != nil)
+		tlsActive := c.TLS() != nil
+		// When TLS is already active OR the server has a TLSConfig
+		// (meaning it can upgrade), accept Inband-Security-Id=1.
+		canTLS := tlsActive || sm.cfg.TLSConfig != nil
+		_, err := cer.ParseWithSecurity(m, smparser.Server, canTLS)
 		if err != nil {
 			err = errorCEA(sm, c, m, cer, err)
 			if err != nil {
@@ -50,6 +54,21 @@ func handleCER(sm *StateMachine) diam.HandlerFunc {
 				Error:   err,
 			})
 			return
+		}
+		// RFC 6733 §6.2: If Inband-Security-Id=1 was negotiated and
+		// TLS is not already active, upgrade the connection now.
+		if cer.RequestedSecurity() == 1 && !tlsActive {
+			if u, ok := c.(diam.TLSUpgrader); ok && sm.cfg.TLSConfig != nil {
+				if err := u.StartTLS(sm.cfg.TLSConfig); err != nil {
+					sm.Error(&diam.ErrorReport{
+						Conn:    c,
+						Message: m,
+						Error:   fmt.Errorf("post-CER TLS upgrade failed: %w", err),
+					})
+					c.Close()
+					return
+				}
+			}
 		}
 		meta := smpeer.FromCER(cer)
 		c.SetContext(smpeer.NewContext(ctx, meta))
