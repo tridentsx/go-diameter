@@ -304,3 +304,21 @@ func printAVP(w io.Writer, avp *AVP) {
 		}
 	}
 }
+
+// RegisterGroupedAVP inserts a Grouped AVP definition directly into the
+// parser's index for the given application. This bypasses the XML Load path
+// and mergeInheritedAVPs, allowing runtime-loaded dictionaries (e.g. from CIL)
+// to be visible to the wire decoder for a specific app ID.
+func (p *Parser) RegisterGroupedAVP(appID, code, vendorID uint32, name string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	avp := &AVP{
+		Name:     name,
+		Code:     code,
+		VendorID: vendorID,
+		Data:     Data{Type: datatype.GroupedType},
+	}
+	p.avpcode[codeIdx{appID, code, vendorID}] = avp
+	p.avpcode[codeIdx{appID, code, UndefinedVendorID}] = avp
+	p.avpname[nameIdx{appID, name, vendorID}] = avp
+}
