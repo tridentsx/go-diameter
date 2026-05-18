@@ -37,6 +37,10 @@ func DecodeGroupedFromBytes(b []byte, application uint32, dictionary *dict.Parse
 		if err != nil {
 			errs = append(errs, err.Error())
 		}
+		if avp.Data == nil {
+			errs = append(errs, fmt.Sprintf("nil Data for AVP code=%d vendor=%d (skipped remaining)", avp.Code, avp.VendorID))
+			break
+		}
 		g.AVP = append(g.AVP, avp)
 		n += avp.Len()
 	}

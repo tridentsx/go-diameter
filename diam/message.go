@@ -166,6 +166,10 @@ func (m *Message) decodeAVPs(b []byte) error {
 				return err
 			}
 		}
+		if a.Data == nil {
+			decodeErrs = append(decodeErrs, fmt.Sprintf("nil Data for AVP code=%d vendor=%d (skipped remaining)", a.Code, a.VendorID))
+			break
+		}
 		m.AVP = append(m.AVP, a)
 		n += a.Len()
 	}
