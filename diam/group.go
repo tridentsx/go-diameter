@@ -32,6 +32,9 @@ func DecodeGrouped(data datatype.Grouped, application uint32, dictionary *dict.P
 		if err != nil {
 			errs = append(errs, err.Error())
 		}
+		if avp.Data == nil {
+			break
+		}
 		g.AVP = append(g.AVP, avp)
 		n += avp.Len()
 	}
